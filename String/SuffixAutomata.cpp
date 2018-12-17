@@ -1,129 +1,134 @@
 #include <iostream>
+#include <algorithm>
 #include <map>
 #include <vector>
 #include <fstream>
 
-std::string str;
-const size_t MAX_STRING_LENGTH = 400000 + 50;
-const size_t MAX_ALPHABET_SIZE = 160;
-std::vector<int> pos(MAX_STRING_LENGTH);
-std::vector<int> lcp(MAX_STRING_LENGTH);
-std::vector<int> mSuffArray(MAX_STRING_LENGTH);
-std::vector<int> mCnt(MAX_STRING_LENGTH);
-std::vector<int> mClasses(MAX_STRING_LENGTH);
-
-int getCharacterCode(char ch) {
-    return ch - '$';
-}
-
-void buildArray(std::string str) {
-
-    std::vector<int> suffArrayTemp;
-    std::vector<int> classesTemp;
-
-    suffArrayTemp.resize(MAX_STRING_LENGTH);
-    classesTemp.resize(MAX_STRING_LENGTH);
-
-    // Zero phase
-
-    for (size_t i = 0; i < str.size(); ++i) {
-        ++mCnt[getCharacterCode(str[i])];
-    }
-    for (size_t i = 1; i < MAX_ALPHABET_SIZE; ++i) {
-        mCnt[i] += mCnt[i - 1];
-    }
-    for (int i = 0; i < str.size(); ++i) {
-        mSuffArray[--mCnt[getCharacterCode(str[i])]] = i;
-    }
-    mClasses[mSuffArray[0]] = 0;
-    int count = 1;
-    for (size_t i = 1; i < str.size(); ++i) {
-        if (str[mSuffArray[i - 1]] != str[mSuffArray[i]]) {
-            ++count;
+class SuffixAutomata {
+public:
+    explicit SuffixAutomata(std::string& str) {
+        last = 0;
+        size = 1;
+        states.resize(str.size() * 2);
+        d.resize(str.size() * 2);
+        count.assign(str.size() * 2, 0);
+        
+        states[0].length = 0;
+        states[0].link = -1;
+        for (char i : str) {
+            addCharacter(i);
         }
-        mClasses[mSuffArray[i]] = count - 1;
     }
-
-    //Other phases
-
-    for (int k = 0; (1 << k) < str.size(); ++k) {
-        int cur = 1 << k;
-        for (int i = 0; i < str.size(); ++i) {
-            suffArrayTemp[i] = mSuffArray[i] - cur;
-            if (suffArrayTemp[i] < 0) {
-                suffArrayTemp[i] += str.size();
+    
+    std::string lcpWithString(std::string& str) {
+        int v = 0;
+        size_t l = 0;
+        size_t best = 0, bestPosition = 0;
+        for (size_t i = 0; i < str.size(); ++i) {
+            while (v && !states[v].next.count(str[i])) {
+                v = states[v].link;
+                l = static_cast<size_t>(states[v].length);
+            }
+            if (states[v].next.count(str[i])) {
+                v = states[v].next[str[i]];
+                ++l;
+            }
+            if (l > best) {
+                best = l;
+                bestPosition = i;
             }
         }
-        mCnt.resize(static_cast<unsigned long>(count));
-        std::fill(mCnt.begin(), mCnt.end(), 0);
-        for (int i = 0; i < str.size(); ++i) {
-            ++mCnt[mClasses[suffArrayTemp[i]]];
+        return str.substr(bestPosition - best + 1, best);
+    }
+    
+    long long countSubstrings(int v = 0) {
+        long long result = 0;
+        if (d[v] != 0) {
+            return d[v];
         }
-        for (int i = 1; i < count; ++i) {
-            mCnt[i] += mCnt[i - 1];
+        for (auto& it : states[v].next) {
+            result += countSubstrings(it.second);
         }
-        for (auto i = static_cast<int>(str.size() - 1); i >= 0; --i) {
-            mSuffArray[--mCnt[mClasses[suffArrayTemp[i]]]] = suffArrayTemp[i];
+        
+        d[v] = result + 1;
+        return d[v];
+    }
+    
+    bool containsSubstring(std::string& str) {
+        if (size < str.length()) {
+            return false;
         }
-        classesTemp[mSuffArray[0]] = 0;
-        count = 1;
-        for (int i = 1; i < str.size(); ++i) {
-            size_t mid1 = (mSuffArray[i] + cur) % str.size();
-            size_t mid2 = (mSuffArray[i - 1] + cur) % str.size();
-            if (mClasses[mSuffArray[i]] != mClasses[mSuffArray[i - 1]] || mClasses[mid1] != mClasses[mid2]) {
-                ++count;
+        
+        int cur = 0;
+        for (char i : str) {
+            if (!states[cur].next.count(i)) {
+                return false;
             }
-            classesTemp[mSuffArray[i]] = count - 1;
+            cur = states[cur].next[i];
         }
-
-        mClasses = classesTemp;
-
-
+        return true;
     }
-}
-
-std::vector<int> calculateLCP() {
-    for (int i = 0; i < str.size(); ++i) {
-        pos[mSuffArray[i]] = i;
-    }
-    int k = 0;
-    for (int i = 0; i < str.size(); ++i) {
-        if (k > 0) {
-            --k;
+    
+private:
+    struct State {
+        int length = 0;
+        int link = 0;
+        std::map<char, int> next;
+        
+        State() {
+            length = 0;
+            link = 0;
         }
-        if (pos[i] == static_cast<int>(str.size() - 1)) {
-            lcp[str.size() - 1] = -1;
-            k = 0;
+        
+    };
+    
+    std::vector<State> states;
+    std::vector<long long> count;
+    std::vector<long long> d;
+    int size;
+    int last;
+    
+    void addCharacter(char ch) {
+        int cur = size++;
+        states[cur].length = states[last].length + 1;
+        int p = last;
+        for (; p != -1 && !states[p].next.count(ch); p = states[p].link) {
+            states[p].next[ch] = cur;
+        }
+        if (p == -1) {
+            states[cur].link = 0;
         } else {
-            int cur = mSuffArray[pos[i] + 1];
-            while (std::max(i + k, cur + k) < str.size() &&
-                   str[i + k] == str[cur + k]) {
-                ++k;
+            int q = states[p].next[ch];
+            if (states[p].length + 1 == states[q].length) {
+                states[cur].link = q;
+            } else {
+                int clone = size++;
+                states[clone].length = states[p].length + 1;
+                states[clone].next = states[q].next;
+                states[clone].link = states[q].link;
+                for (; p != -1 && states[p].next[ch] == q; p = states[p].link) {
+                    states[p].next[ch] = clone;
+                }
+                states[q].link = clone;
+                states[cur].link = clone;
             }
-            lcp[pos[i]] = k;
+            
         }
-
+        last = cur;
     }
-    return lcp;
-}
+};
+
 
 int main() {
     std::ios_base::sync_with_stdio(false);
-
-    std::ifstream in("array.in");
-    std::ofstream out("array.out");
-
-    in >> str;
-    str += '$';
-    buildArray(str);
-    for (int i = 1; i < str.length(); ++i) {
-        out << mSuffArray[i] + 1 << " ";
-    }
-    out << std::endl;
-    std::vector<int> lcp = calculateLCP();
-    for (int i = 1; i < str.length() - 1; ++i) {
-        out << lcp[i] << " ";
-    }
-
+    
+    std::string str1, str2;
+    std::cin >> str1 >> str2;
+    
+    SuffixAutomata suffixAutomata(str1);
+    std::cout << suffixAutomata.countSubstrings() << std::endl;
+    std::cout << suffixAutomata.containsSubstring(str2) << std::endl;
+    std::cout << suffixAutomata.lcpWithString(str2) << std::endl;
+    
     return 0;
 }
