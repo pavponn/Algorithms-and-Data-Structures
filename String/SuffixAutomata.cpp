@@ -71,8 +71,8 @@ public:
     
 private:
     struct State {
-        int length = 0;
-        int link = 0;
+        int length;
+        int link;
         std::map<char, int> next;
         
         State() {
