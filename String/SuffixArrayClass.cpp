@@ -144,20 +144,16 @@ std::vector<int> calculateLCP(SuffixArray& suffixArray) {
 
 int main() {
     std::ios_base::sync_with_stdio(false);
-
-    std::ifstream in("array.in");
-    std::ofstream out("array.out");
-
-    in >> str;
+    std::cin >> str;
     str += '$';
     SuffixArray suffixArray(str);
     for (int i = 1; i < str.length(); ++i) {
-        out << suffixArray[i] + 1 << " ";
+        std::cout << suffixArray[i] + 1 << " ";
     }
-    out << std::endl;
+    std::cout << std::endl;
     std::vector<int> lcp = calculateLCP(suffixArray);
     for (int i = 1; i < str.length() - 1; ++i) {
-        out << lcp[i] << " ";
+        std::cout << lcp[i] << " ";
     }
 
     return 0;

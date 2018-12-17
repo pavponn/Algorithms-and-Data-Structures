@@ -110,19 +110,16 @@ std::vector<int> calculateLCP() {
 int main() {
     std::ios_base::sync_with_stdio(false);
 
-    std::ifstream in("array.in");
-    std::ofstream out("array.out");
-
-    in >> str;
+    std::cin >> str;
     str += '$';
     buildArray(str);
     for (int i = 1; i < str.length(); ++i) {
-        out << mSuffArray[i] + 1 << " ";
+        std::cout << mSuffArray[i] + 1 << " ";
     }
-    out << std::endl;
+    std::cout << std::endl;
     std::vector<int> lcp = calculateLCP();
     for (int i = 1; i < str.length() - 1; ++i) {
-        out << lcp[i] << " ";
+        std::cout << lcp[i] << " ";
     }
 
     return 0;
