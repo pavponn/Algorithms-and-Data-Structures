@@ -7,3 +7,4 @@ Implementations of different algorithms and data structures.
 * Prefix function
 * Z function
 * Suffix Array
+* Suffix Automata
